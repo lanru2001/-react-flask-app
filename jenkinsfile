@@ -1,1 +1,98 @@
+# Production grade Jenkinsfile to deploy to lastest docker image to ECR and update task definition.
 
+currentBuild.displayName = "nodejs-app-#" + currentBuild.number 
+
+pipeline {
+
+  agent any 
+  
+  environment {
+       
+       IMAGE         = "${PROJECT}:${VERSION}"
+       PROJECT       = "node-app"
+       VERSION       = "latest"
+       REGISTRY      = "873079457075.dkr.ecr.us-east-2.amazonaws.com/node-app"
+       ECS_SERVICE   = " "
+       ECS_CLUSTER   = " "
+       FAMILY        = ""
+       TASK_ROLE_ARN = ""  
+       NETWORK_MODE  = "awsvpc"
+       REQ_COMPATIBILITIES = "EC2 FARGATE"
+       
+  } 
+  
+  stages {
+
+      stage('Git Clone') {
+         steps {
+            script {
+               git branch: master,
+               credentialsId: <your credentials id>,
+               url: "https://github.com/lanru2001/Nodejs-React-App.git"
+            }
+         }
+      }
+    
+      stage('Building image') {
+            steps {
+                script {
+                    
+                    sh  " docker build -t '${IMAGE}' . " 
+                    
+                }
+            }    
+      }
+        
+      stage('Push to ECR') {
+            steps {
+                script {
+                    sh "aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 873079457075.dkr.ecr.us-east-2.amazonaws.com"
+                    
+                    sh "docker tag node-app:latest $REGISTRY:latest"
+
+                    
+                    sh "docker push $REGISTRY:latest"
+
+                } 
+            }
+      }    
+    
+      stage('Update To Task Definition') {
+         steps {
+             script {
+                 withAWS(region: 'us-east-2', credentials: 'awsId') {
+                    taskDefRegistry = readJSON text: sh(returnStdout: true, script:"aws ecs register-task-definition \
+                        --memory 512 \
+                        --cpu 256 \
+                        --task-role-arn $TASK_ROLE_ARN \
+                        --family $FAMILY \
+                        --network-mode $NETWORK_MODE \
+                        --requires-compatibilities $REQ_COMPATIBILITIES \
+                        --cli-input-json file://taskdef.json"), returnPojo: true
+                 }
+             }
+         }
+      }  
+ 
+      stage('Update To ECS') {
+          steps {
+             script { 
+                try {
+                   withAWS(region: 'us-east-2', credentials: 'awsId') {
+                      def updateService    = " aws ecs update-service  --service $ECS_SERVICE   --cluster $ECS_CLUSTER  --force-new-deployment "
+                      def runUpdateService = sh(returnStdout: true, script: updateService)
+                      def serviceStable    = "aws ecs wait services-stable --service $ECS_SERVICE --cluster $ECS_CLUSTER "
+                      sh(returnStdout: true, script: serviceStable)
+                      # put all your slack messaging here
+                   }
+                }  
+                catch(Exception e) {
+                    echo e.message.toString()
+                }
+             }
+          } 
+      }    
+          
+  }
+}
+ 
