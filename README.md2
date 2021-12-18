@@ -53,9 +53,7 @@ Set a Clusterrole as cluster-admin in your eks cluster : kubectl create clusterr
 
 How does Amazon EKS work?
 
-
-
-
+https://user-images.githubusercontent.com/59709429/129075646-84580fa2-022a-4e69-b4cf-e88c8d358a87.png
 
 #Elastic Kubernetes Service Architecture image
 https://user-images.githubusercontent.com/59709429/129076003-1216e3f7-ca15-4c2a-bbcb-53de50b5076b.png
