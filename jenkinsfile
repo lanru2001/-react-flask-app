@@ -1,4 +1,5 @@
-# Production grade Jenkinsfile to deploy to lastest docker image to ECR and update task definition.
+# Plugins: Docker, Docker pipeline and Kubernetes Deploy plug-ins are installed in Jenkins server.
+# Production grade Jenkinsfile to deploy latest docker image to ECR and update task definition.
 
 currentBuild.displayName = "nodejs-app-#" + currentBuild.number 
 
